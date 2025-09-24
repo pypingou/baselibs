@@ -1,0 +1,62 @@
+# Memory module native Makefile
+# Builds memory module libraries using gcc/g++
+
+# Include parent configuration
+include ../../Makefile.native
+
+MODULE_DIR := score/memory
+MODULE_BUILD_DIR := $(BUILD_DIR)/$(MODULE_DIR)
+
+# Memory module specific sources
+MEMORY_SOURCES := \
+	$(MODULE_DIR)/endianness.cpp \
+	$(MODULE_DIR)/string_comparison_adaptor.cpp \
+	$(MODULE_DIR)/split_string_view.cpp
+
+MEMORY_OBJECTS := $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(MEMORY_SOURCES))
+
+# Memory test sources
+MEMORY_TEST_SOURCES := \
+	$(MODULE_DIR)/endianness_test.cpp \
+	$(MODULE_DIR)/string_comparison_adaptor_test.cpp \
+	$(MODULE_DIR)/split_string_view_test.cpp \
+	$(MODULE_DIR)/pmr_ring_buffer_test.cpp
+
+MEMORY_TEST_OBJECTS := $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(MEMORY_TEST_SOURCES))
+
+# Libraries
+MEMORY_LIB := $(BUILD_DIR)/libscore_memory.a
+
+# Default target
+.PHONY: all
+all: $(MEMORY_LIB)
+
+# Build memory library
+$(MEMORY_LIB): $(MEMORY_OBJECTS)
+	@echo "Creating memory library $@"
+	$(AR) rcs $@ $^
+
+# Individual targets
+.PHONY: endianness
+endianness: $(BUILD_DIR)/$(MODULE_DIR)/endianness.o
+
+.PHONY: string-comparison
+string-comparison: $(BUILD_DIR)/$(MODULE_DIR)/string_comparison_adaptor.o
+
+.PHONY: split-string
+split-string: $(BUILD_DIR)/$(MODULE_DIR)/split_string_view.o
+
+# Test executable (requires GoogleTest)
+memory_tests: $(MEMORY_LIB) $(MEMORY_TEST_OBJECTS)
+	@echo "Linking memory tests requires GoogleTest"
+	@echo "Install: apt-get install libgtest-dev libgtest-dev"
+	# g++ $(TEST_CXXFLAGS) $(MEMORY_TEST_OBJECTS) $(MEMORY_LIB) -lgtest -lgtest_main -lpthread -o $@
+
+.PHONY: test
+test:
+	@echo "Memory module tests available but require GoogleTest"
+	@echo "Test sources: $(MEMORY_TEST_SOURCES)"
+
+.PHONY: clean
+clean:
+	rm -f $(MEMORY_OBJECTS) $(MEMORY_LIB) $(MEMORY_TEST_OBJECTS)
