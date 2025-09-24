@@ -1,0 +1,203 @@
+# *******************************************************************************
+# Copyright (c) 2025 Contributors to the Eclipse Foundation
+#
+# See the NOTICE file(s) distributed with this work for additional
+# information regarding copyright ownership.
+#
+# This program and the accompanying materials are made available under the
+# terms of the Apache License Version 2.0 which is available at
+# https://www.apache.org/licenses/LICENSE-2.0
+#
+# SPDX-License-Identifier: Apache-2.0
+# *******************************************************************************
+
+# Makefile for score-baselibs project
+# This Makefile wraps Bazel commands using podman containers
+
+# Configuration
+CONTAINER_NAME ?= score-baselibs-build
+IMAGE_NAME ?= $(CONTAINER_NAME):latest
+PODMAN ?= podman
+WORKSPACE_DIR := $(shell pwd)
+
+# Default target
+.PHONY: all
+all: build
+
+# Build the container image
+.PHONY: image
+image:
+	$(PODMAN) build -t $(IMAGE_NAME) -f Containerfile .
+
+# Run bazel command in container
+define run_bazel
+	$(PODMAN) run --rm \
+		-v $(WORKSPACE_DIR):/workspace:Z \
+		-w /workspace \
+		$(IMAGE_NAME) \
+		bazel $(1)
+endef
+
+# Clean any existing containers/images
+.PHONY: clean-containers
+clean-containers:
+	-$(PODMAN) rmi $(IMAGE_NAME) 2>/dev/null || true
+
+# Initialize/update bazel
+.PHONY: init
+init: image
+	$(call run_bazel,version)
+
+# Build all targets
+.PHONY: build
+build: image
+	$(call run_bazel,build //...)
+
+# Build specific target
+.PHONY: build-target
+build-target: image
+	@if [ -z "$(TARGET)" ]; then \
+		echo "Usage: make build-target TARGET=//path/to:target"; \
+		exit 1; \
+	fi
+	$(call run_bazel,build $(TARGET))
+
+# Run all tests
+.PHONY: test
+test: image
+	$(call run_bazel,test //...)
+
+# Run specific test
+.PHONY: test-target
+test-target: image
+	@if [ -z "$(TARGET)" ]; then \
+		echo "Usage: make test-target TARGET=//path/to:test"; \
+		exit 1; \
+	fi
+	$(call run_bazel,test $(TARGET))
+
+# Run unit tests only
+.PHONY: test-unit
+test-unit: image
+	$(call run_bazel,test --test_tag_filters=unit //...)
+
+# Query all packages
+.PHONY: query-packages
+query-packages: image
+	$(call run_bazel,query --output=package "//...")
+
+# Query all targets
+.PHONY: query-targets
+query-targets: image
+	$(call run_bazel,query --output=label "//...")
+
+# Clean bazel outputs
+.PHONY: clean
+clean: image
+	$(call run_bazel,clean)
+
+# Deep clean (remove all bazel artifacts)
+.PHONY: clean-all
+clean-all: image
+	$(call run_bazel,clean --expunge)
+
+# Build specific modules
+.PHONY: build-memory
+build-memory: image
+	$(call run_bazel,build //score/memory/...)
+
+.PHONY: build-utils
+build-utils: image
+	$(call run_bazel,build //score/utils/...)
+
+.PHONY: build-mw
+build-mw: image
+	$(call run_bazel,build //score/mw/...)
+
+.PHONY: build-filesystem
+build-filesystem: image
+	$(call run_bazel,build //score/filesystem/...)
+
+.PHONY: build-concurrency
+build-concurrency: image
+	$(call run_bazel,build //score/concurrency/...)
+
+.PHONY: build-analysis
+build-analysis: image
+	$(call run_bazel,build //score/analysis/...)
+
+# Test specific modules
+.PHONY: test-memory
+test-memory: image
+	$(call run_bazel,test //score/memory/...)
+
+.PHONY: test-utils
+test-utils: image
+	$(call run_bazel,test //score/utils/...)
+
+.PHONY: test-mw
+test-mw: image
+	$(call run_bazel,test //score/mw/...)
+
+.PHONY: test-filesystem
+test-filesystem: image
+	$(call run_bazel,test //score/filesystem/...)
+
+.PHONY: test-concurrency
+test-concurrency: image
+	$(call run_bazel,test //score/concurrency/...)
+
+.PHONY: test-analysis
+test-analysis: image
+	$(call run_bazel,test //score/analysis/...)
+
+# Interactive shell in container
+.PHONY: shell
+shell: image
+	$(PODMAN) run --rm -it \
+		-v $(WORKSPACE_DIR):/workspace:Z \
+		-w /workspace \
+		$(IMAGE_NAME) \
+		/bin/bash
+
+# Show help
+.PHONY: help
+help:
+	@echo "Score-baselibs Makefile"
+	@echo ""
+	@echo "Main targets:"
+	@echo "  all              - Build everything (default)"
+	@echo "  build            - Build all targets"
+	@echo "  test             - Run all tests"
+	@echo "  test-unit        - Run only unit tests"
+	@echo "  clean            - Clean bazel outputs"
+	@echo "  clean-all        - Deep clean all bazel artifacts"
+	@echo ""
+	@echo "Container management:"
+	@echo "  image            - Build container image"
+	@echo "  shell            - Interactive shell in container"
+	@echo "  clean-containers - Remove container images"
+	@echo ""
+	@echo "Module-specific builds:"
+	@echo "  build-memory     - Build memory module"
+	@echo "  build-utils      - Build utils module"
+	@echo "  build-mw         - Build middleware module"
+	@echo "  build-filesystem - Build filesystem module"
+	@echo "  build-concurrency- Build concurrency module"
+	@echo "  build-analysis   - Build analysis module"
+	@echo ""
+	@echo "Module-specific tests:"
+	@echo "  test-memory      - Test memory module"
+	@echo "  test-utils       - Test utils module"
+	@echo "  test-mw          - Test middleware module"
+	@echo "  test-filesystem  - Test filesystem module"
+	@echo "  test-concurrency - Test concurrency module"
+	@echo "  test-analysis    - Test analysis module"
+	@echo ""
+	@echo "Custom targets:"
+	@echo "  build-target TARGET=//path:target - Build specific target"
+	@echo "  test-target TARGET=//path:test   - Test specific target"
+	@echo ""
+	@echo "Query commands:"
+	@echo "  query-packages   - List all packages"
+	@echo "  query-targets    - List all targets"
