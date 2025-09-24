@@ -1,0 +1,11 @@
+prefix=@PREFIX@
+exec_prefix=${prefix}
+libdir=@LIBDIR@
+includedir=@INCLUDEDIR@
+
+Name: score-baselibs
+Description: Base libraries with common functionality for C++ projects
+URL: https://github.com/eclipse-score/baselibs
+Version: @VERSION@
+Libs: -L${libdir} -lscore_memory -lscore_utils -lscore_containers -lscore_bitmanipulation -lscore_filesystem -lscore_concurrency -lscore_json -lscore_os -lscore_log -lscore_analysis -lscore_safecpp -lscore_quality -lscore_result -lscore_futurecpp
+Cflags: -I${includedir}
