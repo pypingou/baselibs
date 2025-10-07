@@ -244,18 +244,9 @@ mode_t MqueueImpl::modeflag_to_nativeflag(const ModeFlag flags) const noexcept
 
 score::os::Mqueue& score::os::Mqueue::instance() noexcept
 {
-    // Create a StaticDestructionGuard instance to ensure the object is properly constructed
-    // before we cast the storage to a reference
-    static StaticDestructionGuard<impl::MqueueImpl> guard;
-
-    return select_instance(
-        // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast): safe usage of reintrpret_cast
-        // Suppress "AUTOSAR_Cpp14_A5_2_4" rule finding: "Reinterpret_cast shall not be used."
-        // Rationale: Reinterpret_cast is used here to ensure proper type handling of the underlying storage.
-        // The guard ensures the object is constructed before accessing its storage
-        // coverity[autosar_cpp14_a5_2_4_violation]
-        reinterpret_cast<impl::MqueueImpl&>(guard.GetStorage()));
-    // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast): safe usage of reintrpret_cast
+    // Use simple static local variable to avoid StaticDestructionGuard initialization issues
+    static impl::MqueueImpl instance;
+    return select_instance(instance);
 }
 
 /* KW_SUPPRESS_START:MISRA.PPARAM.NEEDS.CONST,MISRA.VAR.NEEDS.CONST: */
