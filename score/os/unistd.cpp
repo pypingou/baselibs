@@ -363,12 +363,17 @@ std::uint32_t score::os::internal::UnistdImpl::alarm(const std::uint32_t seconds
 
 score::os::Unistd& score::os::Unistd::instance() noexcept
 {
+    // Create a StaticDestructionGuard instance to ensure the object is properly constructed
+    // before we cast the storage to a reference
+    static StaticDestructionGuard<internal::UnistdImpl> guard;
+
     return select_instance(
         // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast) see rationale below
-        // Suppress “AUTOSAR_Cpp14_A5_2_4” rule finding: “Reinterpret_cast shall not be used.”
+        // Suppress "AUTOSAR_Cpp14_A5_2_4" rule finding: "Reinterpret_cast shall not be used."
         // Rationale: Have to use reinterpret_cast here because of the use of GetStorage
+        // The guard ensures the object is constructed before accessing its storage
         // coverity[autosar_cpp14_a5_2_4_violation]
-        reinterpret_cast<internal::UnistdImpl&>(StaticDestructionGuard<internal::UnistdImpl>::GetStorage())
+        reinterpret_cast<internal::UnistdImpl&>(guard.GetStorage())
         // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast)
     );
 }
