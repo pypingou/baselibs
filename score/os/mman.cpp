@@ -296,18 +296,9 @@ score::cpp::pmr::unique_ptr<score::os::Mman> score::os::Mman::Default(score::cpp
 
 score::os::Mman& score::os::Mman::instance() noexcept
 {
-    // Create a StaticDestructionGuard instance to ensure the object is properly constructed
-    // before we cast the storage to a reference
-    static StaticDestructionGuard<internal::MmanImpl> guard;
-
-    // Suppress "AUTOSAR_Cpp14_A5_2_4" rule finding: "Reinterpret_cast shall not be used."
-    // Reinterpret_cast is used here to ensure proper type handling of the underlying storage.
-    // The guard ensures the object is constructed before accessing its storage
-    return select_instance(
-        // NOLINTBEGIN(cppcoreguidelines-pro-type-reinterpret-cast): safe usage of reintrpret_cast
-        // coverity[autosar_cpp14_a5_2_4_violation]
-        reinterpret_cast<internal::MmanImpl&>(guard.GetStorage()));
-    // NOLINTEND(cppcoreguidelines-pro-type-reinterpret-cast): safe usage of reintrpret_cast
+    // Use simple static local variable to avoid StaticDestructionGuard initialization issues
+    static internal::MmanImpl instance;
+    return select_instance(instance);
 }
 
 /* KW_SUPPRESS_END:MISRA.VAR.HIDDEN: Wrapper function is identifiable through namespace usage */
