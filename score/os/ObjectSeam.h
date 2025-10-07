@@ -69,7 +69,7 @@ class ObjectSeam  // LCOV_EXCL_LINE: tooling issue
   private: /* KW_SUPPRESS:MISRA.USE.EXPANSION:False postive as private is an access specifier, not macro */
     static Object*& get_local_instance() noexcept
     {
-        static Object* instance_;
+        static Object* instance_ = nullptr;
         return instance_;
     }
 };
