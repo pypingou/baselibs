@@ -92,6 +92,59 @@ constexpr auto readWriteAccessForEveryBody =
 constexpr auto read_only = ::score::os::Stat::Mode::kReadUser;
 constexpr score::os::IAccessControlList::UserIdentifier kTypedmemdUid = 3020;
 
+/// \brief Check if path requires subdirectory handling (full path with subdirectories)
+bool RequiresSubdirectoryHandling(const std::string& path) noexcept
+{
+    // Check if path starts with /dev/shm/ and contains subdirectories
+    return path.starts_with("/dev/shm/") && path.find('/', 9) != std::string::npos;
+}
+
+/// \brief Create directory path if it doesn't exist
+score::cpp::expected_blank<Error> CreateDirectoryIfNeeded(const std::string& file_path) noexcept
+{
+    // Extract directory path from file path
+    const auto last_slash = file_path.find_last_of('/');
+    if (last_slash == std::string::npos || last_slash == 0)
+    {
+        return {}; // No directory to create
+    }
+
+    const std::string dir_path = file_path.substr(0, last_slash);
+
+    // Try to create directory (mkdir -p equivalent)
+    const auto result = ::score::os::Stat::instance().mkdir(dir_path.c_str(),
+        Stat::Mode::kReadWriteExecUser | Stat::Mode::kReadWriteExecGroup | Stat::Mode::kReadWriteExecOthers);
+
+    if (!result.has_value() && result.error() != Error::Code::kObjectExists)
+    {
+        score::mw::log::LogError("shm") << "Failed to create directory " << dir_path << ": " << result.error();
+        return score::cpp::make_unexpected(result.error());
+    }
+
+    return {};
+}
+
+/// \brief Open regular file instead of shm_open for subdirectory paths
+score::cpp::expected<int, Error> OpenRegularFile(const std::string& path, const Fcntl::Open& flags, Stat::Mode mode) noexcept
+{
+    // Create directory if needed
+    const auto dir_result = CreateDirectoryIfNeeded(path);
+    if (!dir_result.has_value())
+    {
+        return score::cpp::make_unexpected(dir_result.error());
+    }
+
+    // Open file with regular open() instead of shm_open()
+    const auto result = ::score::os::Fcntl::instance().open(path.c_str(), flags, mode);
+    if (!result.has_value())
+    {
+        score::mw::log::LogError("shm") << "Failed to open regular file " << path << ": " << result.error();
+        return score::cpp::make_unexpected(result.error());
+    }
+
+    return result.value();
+}
+
 /// \brief Class aggregating info about shm-object read out via stat/fstat from the shm-object file
 struct ShmObjectStatInfo
 {
@@ -320,10 +373,19 @@ void SharedMemoryResource::UnlinkFilesystemEntry() const noexcept
     // there's no way for path to equal nullptr using the public interface.)
     if (path != nullptr)
     {
-        // This requirement broken_link_c/issue/57467 directly excludes memory::shared (which is
-        // part of mw::com) from the ban by listing it in the not relevant for field.
-        // NOLINTNEXTLINE(score-banned-function): explanation on lines above.
-        score::cpp::ignore = ::score::os::Mman::instance().shm_unlink(path->c_str());
+        // Check if path requires subdirectory handling
+        if (RequiresSubdirectoryHandling(*path))
+        {
+            // Use regular unlink for paths with subdirectories
+            score::cpp::ignore = ::score::os::Unistd::instance().unlink(path->c_str());
+        }
+        else
+        {
+            // This requirement broken_link_c/issue/57467 directly excludes memory::shared (which is
+            // part of mw::com) from the ban by listing it in the not relevant for field.
+            // NOLINTNEXTLINE(score-banned-function): explanation on lines above.
+            score::cpp::ignore = ::score::os::Mman::instance().shm_unlink(path->c_str());
+        }
     }
     // LCOV_EXCL_BR_STOP
 }
@@ -590,8 +652,19 @@ auto SharedMemoryResource::waitForOtherProcessAndOpen() noexcept -> score::cpp::
     SCORE_LANGUAGE_FUTURECPP_ASSERT_PRD_MESSAGE(is_named_shm, "shm-object file path is not set.");
     this->waitUntilInitializedByOtherProcess();
 
-    // NOLINTNEXTLINE(score-banned-function) need to use shm_open for correct behavior
-    const auto result = ::score::os::Mman::instance().shm_open(path->data(), this->opening_mode_, read_only);
+    // Check if path requires subdirectory handling
+    score::cpp::expected<int, Error> result;
+    if (RequiresSubdirectoryHandling(*path))
+    {
+        // Use regular file operations for paths with subdirectories
+        result = OpenRegularFile(*path, this->opening_mode_, read_only);
+    }
+    else
+    {
+        // NOLINTNEXTLINE(score-banned-function) need to use shm_open for correct behavior
+        result = ::score::os::Mman::instance().shm_open(path->data(), this->opening_mode_, read_only);
+    }
+
     if (!result.has_value())
     {
         score::mw::log::LogError("shm") << __func__ << __LINE__ << "Unexpected error while opening Shared Memory Resource"
@@ -954,8 +1027,19 @@ score::cpp::expected_blank<score::os::Error> SharedMemoryResource::OpenSharedMem
     const auto* const path = std::get_if<std::string>(&shared_memory_resource_identifier_);
     if (path != nullptr)
     {
-        // NOLINTNEXTLINE(score-banned-function) need to use shm_open for correct behavior
-        const auto result = ::score::os::Mman::instance().shm_open(path->data(), flags, mode);
+        // Check if path requires subdirectory handling
+        score::cpp::expected<int, Error> result;
+        if (RequiresSubdirectoryHandling(*path))
+        {
+            // Use regular file operations for paths with subdirectories
+            result = OpenRegularFile(*path, flags, mode);
+        }
+        else
+        {
+            // NOLINTNEXTLINE(score-banned-function) need to use shm_open for correct behavior
+            result = ::score::os::Mman::instance().shm_open(path->data(), flags, mode);
+        }
+
         if (!result.has_value())
         {
             // If we couldn't create the memory region because it's already open, we return an error code.
