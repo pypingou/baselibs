@@ -96,7 +96,7 @@ constexpr score::os::IAccessControlList::UserIdentifier kTypedmemdUid = 3020;
 bool RequiresSubdirectoryHandling(const std::string& path) noexcept
 {
     // Check if path starts with /dev/shm/ and contains subdirectories
-    return path.starts_with("/dev/shm/") && path.find('/', 9) != std::string::npos;
+    return path.size() >= 9 && path.substr(0, 9) == "/dev/shm/" && path.find('/', 9) != std::string::npos;
 }
 
 /// \brief Create directory path if it doesn't exist
