@@ -715,6 +715,13 @@ auto SharedMemoryResource::getOwnerUid() const noexcept -> uid_t
 
 auto SharedMemoryResource::GetLockFilePath(const std::string& input_path) noexcept -> std::string
 {
+    // If input_path already contains a full path to shared memory, use it directly
+    // Otherwise, prepend the tmp prefix for simple shm names
+    if ((input_path.size() >= 9 && input_path.substr(0, 9) == "/dev/shm/") ||
+        (input_path.size() >= 11 && input_path.substr(0, 11) == "/dev/shmem/"))
+    {
+        return input_path + "_lock";
+    }
     return std::string{kTmpPathPrefix} + input_path + "_lock";
 }
 
