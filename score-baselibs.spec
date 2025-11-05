@@ -2,7 +2,7 @@
 
 Name:           score-baselibs
 Version:        0.0.5
-Release:        8%{?dist}
+Release:        9%{?dist}
 Summary:        Base libraries with common functionality for C++ projects
 
 License:        Apache-2.0
@@ -106,6 +106,9 @@ make install DESTDIR=%{buildroot} PREFIX=%{_prefix} LIBDIR=%{_libdir} INCLUDEDIR
 %{_libdir}/libscore_futurecpp.so
 
 %changelog
+* Mon Nov 03 2025 Pierre-Yves Chibon <pingou@pingoured.fr> - 0.0.5-9
+- Rebase to main commit de5bb275ee9957433b3587582ac07d3eeb98dd6a + all patches
+
 * Thu Oct 09 2025 Pierre-Yves Chibon <pingou@pingoured.fr> - 0.0.5-8
 - Fix GetLockFilePath for full shared memory paths to prevent double-prefixing
 - Avoid creating invalid paths like /tmp/dev/shm/lola_qm/...
