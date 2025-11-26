@@ -31,6 +31,7 @@ LIBDIR ?= $(PREFIX)/lib
 INCLUDEDIR ?= $(PREFIX)/include
 DOCDIR ?= $(PREFIX)/share/doc/score-baselibs
 DATADIR ?= $(PREFIX)/share/score-baselibs
+PKGCONFIGDIR ?= $(LIBDIR)/pkgconfig
 
 # Compiler Flags (based on Bazel analysis)
 CXXFLAGS := -std=c++17 -Wall -Wno-error=deprecated-declarations -Wno-error=narrowing
@@ -500,19 +501,32 @@ srpm:
 	cd "$(ROOT_DIR)" && \
 	rm -rf "$$TEMP_DIR"
 
-# Handle version argument as a target (prevents make from complaining)
-%:
+# Generate pkgconfig file
+$(BUILD_DIR)/score-baselibs.pc: score-baselibs.pc.in
+	@echo "Generating pkgconfig file..."
+	@mkdir -p $(BUILD_DIR)
+	sed -e 's|@PREFIX@|$(PREFIX)|g' \
+	    -e 's|@LIBDIR@|$(LIBDIR)|g' \
+	    -e 's|@INCLUDEDIR@|$(INCLUDEDIR)|g' \
+	    -e 's|@VERSION@|$(LIBRARY_VERSION)|g' \
+	    score-baselibs.pc.in > $@
+
+# Handle version argument as a target (prevents make from complaining about version numbers like 1.2.3)
+# This matches patterns like 1.2.3, 0.1.0, etc.
+[0-9]*.[0-9]*.[0-9]*:
 	@:
 
 # Install target
 .PHONY: install
-install: libs
+
+install: libs $(BUILD_DIR)/score-baselibs.pc
 	@echo "Installing score-baselibs to $(DESTDIR)$(PREFIX)"
 	# Create directories
 	install -d $(DESTDIR)$(LIBDIR)
 	install -d $(DESTDIR)$(INCLUDEDIR)
 	install -d $(DESTDIR)$(DOCDIR)
 	install -d $(DESTDIR)$(DATADIR)
+	install -d $(DESTDIR)$(PKGCONFIGDIR)
 
 	# Install shared libraries with proper versioning
 	install -m 755 build/libscore_memory.so.$(LIBRARY_VERSION) $(DESTDIR)$(LIBDIR)/
@@ -575,6 +589,9 @@ install: libs
 	install -m 644 README.md $(DESTDIR)$(DOCDIR)/
 	install -m 644 LICENSE $(DESTDIR)$(DOCDIR)/
 	install -m 644 NOTICE $(DESTDIR)$(DOCDIR)/
+
+	# Install pkgconfig file
+	install -m 644 $(BUILD_DIR)/score-baselibs.pc $(DESTDIR)$(PKGCONFIGDIR)/
 
 	# Install Makefiles for users
 	install -m 644 Makefile $(DESTDIR)$(DATADIR)/Makefile.example

@@ -2,7 +2,7 @@
 
 Name:           score-baselibs
 Version:        0.0.5
-Release:        9%{?dist}
+Release:        10%{?dist}
 Summary:        Base libraries with common functionality for C++ projects
 
 License:        Apache-2.0
@@ -52,7 +52,7 @@ needed to build applications using score-baselibs.
 
 %install
 # Use make install with proper RPM variables
-make install DESTDIR=%{buildroot} PREFIX=%{_prefix} LIBDIR=%{_libdir} INCLUDEDIR=%{_includedir} DOCDIR=%{_docdir}/%{name} DATADIR=%{_datadir}/%{name}
+make install DESTDIR=%{buildroot} PREFIX=%{_prefix} LIBDIR=%{_libdir} INCLUDEDIR=%{_includedir} DOCDIR=%{_docdir}/%{name} DATADIR=%{_datadir}/%{name} PKGCONFIGDIR=%{_libdir}/pkgconfig
 
 %files
 %license LICENSE
@@ -90,6 +90,7 @@ make install DESTDIR=%{buildroot} PREFIX=%{_prefix} LIBDIR=%{_libdir} INCLUDEDIR
 %{_includedir}/score/
 %{_datadir}/%{name}/
 %{_docdir}/%{name}/
+%{_libdir}/pkgconfig/score-baselibs.pc
 %{_libdir}/libscore_memory.so
 %{_libdir}/libscore_utils.so
 %{_libdir}/libscore_containers.so
@@ -106,6 +107,10 @@ make install DESTDIR=%{buildroot} PREFIX=%{_prefix} LIBDIR=%{_libdir} INCLUDEDIR
 %{_libdir}/libscore_futurecpp.so
 
 %changelog
+* Tue Nov 25 2025 Pierre-Yves Chibon <pingou@pingoured.fr> - 0.0.5-10
+- Add pkgconfig file support to provide pkgconfig(score-baselibs)
+- Fix persistency-cpp-devel dependency resolution issues
+
 * Mon Nov 03 2025 Pierre-Yves Chibon <pingou@pingoured.fr> - 0.0.5-9
 - Rebase to main commit de5bb275ee9957433b3587582ac07d3eeb98dd6a + all patches
 
