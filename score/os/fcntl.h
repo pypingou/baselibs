@@ -62,6 +62,7 @@ class Fcntl : public ObjectSeam<Fcntl>
         kTruncate = 128UL,
         kDirectory = 256UL,
         kAppend = 512UL,
+        kNoFollow = 1024UL,
         kSynchronized = 1052672UL
     };
 
