@@ -154,6 +154,10 @@ std::int32_t internal::fcntl_helper::OpenFlagToInteger(const Fcntl::Open flags) 
     {
         native_flags |= static_cast<std::uint32_t>(O_APPEND);
     }
+    if (static_cast<utype_openflag>(flags & Fcntl::Open::kNoFollow) != 0U)
+    {
+        native_flags |= static_cast<std::uint32_t>(O_NOFOLLOW);
+    }
 // coverity[autosar_cpp14_a16_0_1_violation], see above rationale
 #ifdef __linux__
     // LCOV_EXCL_START: Linux specific code, scope of codecoverage is only for qnx code
